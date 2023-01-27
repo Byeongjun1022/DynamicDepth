@@ -5,3 +5,5 @@ wandb
 log
 /splits/cityscapes/gt_depths
 sweep
+.idea/
+splits/
