@@ -12,17 +12,21 @@ class MonodepthOptions:
         self.parser.add_argument("--data_path",
                                  type=str,
                                  help="path to the training data",
-                                 default='data/CS')
+                                 # default='data/CS')
+                                 default='/mnt/study/depth/Datasets/CS_sequence/leftImg8bit_sequence/train')
         self.parser.add_argument("--eval_data_path",
                                  type=str,
                                  help="path to the evaluation data",
-                                 default='data/CS_RAW/')
+                                 # default='data/CS_RAW/')
+                                 default='/mnt/study/depth/Datasets/CS_sequence')
         self.parser.add_argument("--log_dir",
                                  type=str,
                                  help="log directory",
                                  default='log')
 
         # TRAINING options
+        self.parser.add_argument("--debug",
+                                 action='store_true')
         self.parser.add_argument("--model_name",
                                  type=str,
                                  help="the name of the folder to save the model in",
@@ -190,12 +194,14 @@ class MonodepthOptions:
         self.parser.add_argument("--load_weights_folder",
                                  type=str,
                                  help="name of model to load",
-                                 default='log/CityScapes_MR/')
-                                 #default=None)
+                                 # default='log/CityScapes_MR/')
+                                 default='log/pre-trained/')
+                                 # default=None)
         self.parser.add_argument("--mono_weights_folder",
                                  type=str,
-                                 default='log/CityScapes_MR/')
-                                 #default=None)
+                                 # default='log/CityScapes_MR/')
+                                 default='log/pre-trained/')
+                                 # default=None)
         self.parser.add_argument("--models_to_load",
                                  nargs="+",
                                  type=str,

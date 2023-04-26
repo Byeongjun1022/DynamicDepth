@@ -37,7 +37,7 @@ def seed_worker(worker_id):
 class Trainer:
     def __init__(self, options):
         self.opt = options
-        wandb.init(project='DynamicDepth')
+        # wandb.init(project='DynamicDepth')
         self.log_path = os.path.join(self.opt.log_dir, self.opt.model_name)
 
         # checking height and width are multiples of 32
@@ -145,6 +145,8 @@ class Trainer:
         else:
             fpath = os.path.join("splits", self.opt.split, "{}_files.txt")
             train_filenames = readlines(fpath.format("withmask"))
+            if self.opt.debug:
+                train_filenames=train_filenames[:20]
         img_ext = '.png' if self.opt.png else '.jpg'
 
         num_train_samples = len(train_filenames)
@@ -155,18 +157,22 @@ class Trainer:
             frames_to_load, 4, is_train=not self.opt.export, img_ext=img_ext)
         if self.opt.export:
             self.opt.batch_size = 1
-        self.train_loader = DataLoader(
-            train_dataset, self.opt.batch_size, shuffle=False,#not self.opt.export,
-            num_workers=self.opt.num_workers, pin_memory=False, drop_last=True,
-            worker_init_fn=seed_worker)
+        # self.train_loader = DataLoader(
+        #     train_dataset, self.opt.batch_size, shuffle=False,#not self.opt.export,
+        #     num_workers=self.opt.num_workers, pin_memory=False, drop_last=True,
+        #     worker_init_fn=seed_worker)
         if self.opt.split == 'cityscapes_preprocessed':
             val_filenames = readlines('splits/cityscapes/test_files.txt')
+            if self.opt.debug:
+                val_filenames=val_filenames[:20]
             val_dataset = datasets.CityscapesEvalDataset(self.opt.eval_data_path, val_filenames,
                                                      self.opt.height, self.opt.width,
                                                      [0, -1], 4,
                                                      is_train=False)
         else:
             val_filenames = readlines(os.path.join('splits', self.opt.eval_split, "test_files.txt"))
+            if self.opt.debug:
+                val_filenames=val_filenames[:20]
             val_dataset = self.dataset(
                 self.opt.data_path, val_filenames, self.opt.height, self.opt.width,
                 frames_to_load, 4, is_train=False, img_ext=img_ext)
@@ -213,7 +219,7 @@ class Trainer:
             len(train_dataset), len(val_dataset)))
 
         self.save_opts()
-        wandb.config.update(self.opt)
+        # wandb.config.update(self.opt)
         self.best = 10.0
         self.doj_best = 10.0
         #torch.autograd.set_detect_anomaly(True)
@@ -272,7 +278,7 @@ class Trainer:
             if (self.epoch + 1) % self.opt.save_frequency == 0:
                 self.save_model()
         self.models = init
-        wandb.join()
+        # wandb.join()
 
     def run_epoch(self):
         """Run a single epoch of training and validation
@@ -459,14 +465,23 @@ class Trainer:
         outputs.update(self.models["depth"](features))
 
         ############# warpping image based on multi frame model pose and depth ###############
+        # if self.opt.export:
+        #     with torch.no_grad():
+        #         _, multi_depth = disp_to_depth(outputs["disp", 0].detach(), self.opt.min_depth, self.opt.max_depth)  # [12, 1, 192, 512]
+        #         multi_depth =multi_depth.detach()
+        #
+        #         if not is_train:
+        #             save_path = 'visualization/pred/{}.npy'.format(int(inputs['index']))
+        #             np.save(save_path, multi_depth.squeeze().cpu().numpy())
+
         if self.opt.export:
             with torch.no_grad():
-                _, multi_depth = disp_to_depth(outputs["disp", 0].detach(), self.opt.min_depth, self.opt.max_depth)  # [12, 1, 192, 512]
-                multi_depth =multi_depth.detach()
+                # _, multi_depth = disp_to_depth(outputs["disp", 0].detach(), self.opt.min_depth, self.opt.max_depth)  # [12, 1, 192, 512]
+                multi_disp = outputs["disp", 0].detach()
 
                 if not is_train:
-                    save_path = 'visualization/pred/{}.npy'.format(int(inputs['index']))
-                    np.save(save_path, multi_depth.squeeze().cpu().numpy())
+                    save_path = 'visualization/pred_disp/{}.npy'.format(int(inputs['index']))
+                    np.save(save_path, multi_disp.squeeze().cpu().numpy())
            
         ####################################################################################################
 
@@ -628,31 +643,31 @@ class Trainer:
         for i, metric in enumerate(self.depth_metric_names):    
             print('doj/'+metric, ': ', losses['doj/'+metric])
             ###### done until here
-        self.log('val', inputs, outputs, losses)
-        if losses["de/abs_rel"] < self.best:
-            self.best = losses["de/abs_rel"]
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!saving best result: ", self.best)
-            for l, v in losses.items():
-                wandb.log({"best{}".format(l): v}, step=self.step)
-                writer = self.writers['val']
-                writer.add_scalar("best{}".format(l), v, self.step)
-                print(l, v)
-            self.save_model("best")
-            absrel = round(losses["de/abs_rel"] * 1000)
-            if absrel < 120:
-                self.save_model('absrel{}'.format(absrel))
-        if losses["doj/de/abs_rel"] < self.doj_best:
-            self.doj_best = losses["doj/de/abs_rel"]
-            wandb.log({"bestdoj/de/absrel": self.doj_best}, step=self.step)
-            print("***********************************dynamic objects depth best result: ", self.doj_best)
-            print('doj pxs', losses['dojpxs'])
-            print('all pxs', losses['allpxs'])
-            doj = round(losses["doj/de/abs_rel"] * 1000)
-            if doj < 140:
-                self.save_model('doj{}'.format(doj))
-        del inputs, outputs, losses
-
-        self.set_train()
+        # self.log('val', inputs, outputs, losses)
+        # if losses["de/abs_rel"] < self.best:
+        #     self.best = losses["de/abs_rel"]
+        #     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!saving best result: ", self.best)
+        #     for l, v in losses.items():
+        #         wandb.log({"best{}".format(l): v}, step=self.step)
+        #         writer = self.writers['val']
+        #         writer.add_scalar("best{}".format(l), v, self.step)
+        #         print(l, v)
+        #     self.save_model("best")
+        #     absrel = round(losses["de/abs_rel"] * 1000)
+        #     if absrel < 120:
+        #         self.save_model('absrel{}'.format(absrel))
+        # if losses["doj/de/abs_rel"] < self.doj_best:
+        #     self.doj_best = losses["doj/de/abs_rel"]
+        #     wandb.log({"bestdoj/de/absrel": self.doj_best}, step=self.step)
+        #     print("***********************************dynamic objects depth best result: ", self.doj_best)
+        #     print('doj pxs', losses['dojpxs'])
+        #     print('all pxs', losses['allpxs'])
+        #     doj = round(losses["doj/de/abs_rel"] * 1000)
+        #     if doj < 140:
+        #         self.save_model('doj{}'.format(doj))
+        # del inputs, outputs, losses
+        #
+        # self.set_train()
 
     def generate_images_pred(self, inputs, outputs, is_multi=False):
         """Generate the warped (reprojected) color images for a minibatch.
